@@ -1,22 +1,11 @@
 from seq_env_wrapper import SequenceEnvironmentWrapper
+import torch
 from qtransformer import QTransformer
 
 import gymnasium as gym
-import numpy as np
-import torch
-
 
 def transform_state(history):
     return torch.from_numpy(history['observations']).unsqueeze(0).float()
-
-def eval(env_name, model, episodes):
-    env = SequenceEnvironmentWrapper(gym.make(env_name), num_stack_frames=4, action_dim=6)
-
-    returns = []
-    for i in range(episodes):
-        returns.append(play_episode(env, model))
-
-    return np.mean(returns)
 
 
 def play_episode(env: SequenceEnvironmentWrapper, model):
@@ -35,5 +24,16 @@ def play_episode(env: SequenceEnvironmentWrapper, model):
         done = truncated or terminated
         steps += 1
         episode_return += reward
+        break
 
     return episode_return
+
+
+model = QTransformer(17, 6, 256, 256, 4)
+checkpoint = torch.load('models/model-999.pt')
+
+model.load_state_dict(checkpoint['model_state'])
+model.eval()
+
+play_episode(SequenceEnvironmentWrapper(gym.make('HalfCheetah-v4'), num_stack_frames=4, action_dim=6), model)
+
