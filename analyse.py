@@ -2,7 +2,7 @@ import minari
 
 import numpy as np
 import pickle
-dataset = minari.load_dataset('HalfCheetah-v4-random-v0')
+dataset = minari.load_dataset('CartPole-v1-random-v0')
 
 result = dict()
 observations = []
@@ -27,3 +27,4 @@ for episode in dataset.iterate_episodes():
 
 print(np.min(returns))
 print(np.max(returns))
+print(np.mean(returns))

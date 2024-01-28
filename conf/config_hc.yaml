@@ -1,8 +1,8 @@
 model:
   n_layers: 3
   n_heads: 4
-  hidden_dim: 256
-  action_bins: 4
+  hidden_dim: 512
+  action_bins: 256
   seq_len: 4
 train:
   epochs: 3
@@ -14,14 +14,14 @@ train:
 
 gamma: 0.99
 env:
-  id: CartPole-v1
+  id: HalfCheetah-v1
   discrete_actions: True
-  state_dim: 4
-  action_dim: 1
-  R_min: 0
-  R_max: 500
+  state_dim: 17
+  action_dim: 6
+  R_min: -6000
+  R_max: 12000
   action_min: -1
   action_max: 1
 
-dataset: data/pole_random_seq.pkl
+dataset: data/random_seq.pkl
 

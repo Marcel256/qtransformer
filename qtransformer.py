@@ -15,25 +15,27 @@ class QTransformer(nn.Module):
 
         self.state_emb = nn.Linear(state_dim, hidden_dim)
 
-        self.q_head = nn.Linear(hidden_dim, action_bins, bias=False)
+        self.q_head = nn.Linear(hidden_dim, action_bins)
         self.action_emb = nn.Embedding(action_bins, hidden_dim)
 
-        mask_size = action_dim + seq_len
+        mask_size = action_dim + seq_len - 1
         self.attn_mask = torch.from_numpy(np.logical_not(np.tril(np.ones((mask_size, mask_size)))))
 
-        self.pos_enc = nn.Parameter(torch.randn((1, seq_len+action_dim, hidden_dim))*0.02, requires_grad=True)
+        self.pos_enc = nn.Parameter(torch.randn((1, mask_size, hidden_dim))*0.02, requires_grad=True)
 
 
     def forward(self, states, actions):
-
         state_token = self.state_emb(states)
-        a_token = self.action_emb(actions)
-
-        token = torch.cat((state_token, a_token), dim=1) + self.pos_enc
+        if self.action_dim > 1:
+            a_token = self.action_emb(actions[:,:-1])
+            token = torch.cat((state_token, a_token), dim=1)
+        else:
+            token = state_token
+        token =  token + self.pos_enc
         out = self.transformer(token, attn_mask=self.attn_mask)
-        q_values = self.q_head(out[:,-(self.action_dim+1):-1])
+        q_values = self.q_head(out[:,-(self.action_dim):])
 
-        return torch.tanh(q_values)
+        return q_values
 
 
     def predict_action(self, states):
@@ -41,7 +43,7 @@ class QTransformer(nn.Module):
         with torch.no_grad():
             for i in range(self.action_dim):
                 q_values = self.forward(states, actions)
-                indices = torch.argmax(q_values[:, i], dim=-1)
+                indices = torch.argmax(q_values[:, -self.action_dim+i], dim=-1)
                 actions[:, i] = indices
 
         return actions.cpu().numpy()

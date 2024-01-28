@@ -22,11 +22,11 @@ class SequenceEnvironmentWrapper(WrappedGymEnv):
     self._env = env
     self.game_name = game_name
     self.num_stack_frames = num_stack_frames
-    self.obs_stack = collections.deque([], maxlen=self.num_stack_frames)
-    self.act_stack = collections.deque([], maxlen=self.num_stack_frames)
-    self.rew_stack = collections.deque([], maxlen=self.num_stack_frames)
-    self.done_stack = collections.deque([], maxlen=self.num_stack_frames)
-    self.info_stack = collections.deque([], maxlen=self.num_stack_frames)
+    self.obs_stack = collections.deque(maxlen=self.num_stack_frames)
+    self.act_stack = collections.deque(maxlen=self.num_stack_frames)
+    self.rew_stack = collections.deque(maxlen=self.num_stack_frames)
+    self.done_stack = collections.deque(maxlen=self.num_stack_frames)
+    self.info_stack = collections.deque(maxlen=self.num_stack_frames)
     self.action_dim = action_dim
 
   @property
@@ -59,7 +59,7 @@ class SequenceEnvironmentWrapper(WrappedGymEnv):
       if self.is_goal_conditioned:
         self.goal_stack.append(self._env.goal)  # pytype: disable=attribute-error
       self.obs_stack.append(np.zeros_like(obs))
-      self.act_stack.append(np.zeros(self.action_dim))
+      self.act_stack.append(np.zeros((self.action_dim)))
       self.rew_stack.append(0)
       self.done_stack.append(0)
       self.info_stack.append(None)
@@ -119,12 +119,15 @@ class SequenceEnvironmentWrapper(WrappedGymEnv):
   def step(self, action: np.ndarray):
     """Replaces env observation with fixed length observation history."""
     # Update applied action to the previous timestep.
-    self.act_stack[-1] = action
+    if self.action_dim == 1:
+      self.act_stack[-1] = np.array([action])
+    else:
+      self.act_stack[-1] = action
     obs, rew, done, tr, info = self._env.step(action)
     self.rew_stack[-1] = rew
     # Update frame stack.
     self.obs_stack.append(obs)
-    self.act_stack.append(np.zeros_like(action))  # Append unknown action to current timestep.
+    self.act_stack.append(np.zeros(self.action_dim))  # Append unknown action to current timestep.
     self.rew_stack.append(0)
     self.info_stack.append(info)
 

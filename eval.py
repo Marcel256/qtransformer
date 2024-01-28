@@ -9,8 +9,8 @@ import torch
 def transform_state(history):
     return torch.from_numpy(history['observations']).unsqueeze(0).float()
 
-def eval(env_name, model, episodes):
-    env = SequenceEnvironmentWrapper(gym.make(env_name), num_stack_frames=4, action_dim=6)
+def eval(env, model, episodes):
+
 
     returns = []
     for i in range(episodes):
@@ -29,8 +29,8 @@ def play_episode(env: SequenceEnvironmentWrapper, model):
     a_min = -1
     a_max = 1
     while not done:
-        action = model.predict_action(transform_state(history))[0]
-        action = action / action_bins * (a_max-a_min) + a_min
+        action = model.predict_action(transform_state(history))[0][0]
+        #action = action / action_bins * (a_max-a_min) + a_min
         history, reward, terminated, truncated, info = env.step(action)
         done = truncated or terminated
         steps += 1
