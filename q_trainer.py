@@ -41,7 +41,7 @@ def train(cfg : DictConfig) -> None:
     env_name = env_config['id']
     action_dim = env_config['action_dim']
     action_bins = model_config['action_bins']
-    env = SequenceEnvironmentWrapper(gym.make(env_name), num_stack_frames=seq_len, action_dim=action_dim)
+
     discrete_actions = env_config['discrete_actions']
     state_dim = env_config['state_dim']
     hidden_dim = model_config['hidden_dim']
@@ -51,6 +51,15 @@ def train(cfg : DictConfig) -> None:
     gamma = cfg['gamma']
     tau = train_config['tau']
     reg_weight = train_config['reg_weight']
+
+    a_min = env_config['action_min']
+    a_max = env_config['action_max']
+
+    if discrete_actions:
+        action_transform = lambda x: x[0]
+    else:
+        action_transform = lambda x: (x/action_bins) * (a_max - a_min) + a_min
+    env = SequenceEnvironmentWrapper(gym.make(env_name), num_stack_frames=seq_len, action_dim=action_dim, action_transform=action_transform)
     model = QTransformer(state_dim, action_dim, hidden_dim, action_bins, seq_len)
     target_model = QTransformer(state_dim, action_dim, hidden_dim, action_bins, seq_len)
     target_model.eval()
@@ -67,7 +76,7 @@ def train(cfg : DictConfig) -> None:
     reg_loss_list = deque(maxlen=50)
 
     logger = ConsoleLogger()
-
+    print(eval(env, model, 10))
     for epoch in range(epochs):
         for batch in dataloader:
             states, actions, rewards, returns, terminal = batch

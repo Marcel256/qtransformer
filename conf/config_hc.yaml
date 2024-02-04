@@ -14,12 +14,12 @@ train:
 
 gamma: 0.99
 env:
-  id: HalfCheetah-v1
-  discrete_actions: True
+  id: HalfCheetah-v4
+  discrete_actions: False
   state_dim: 17
   action_dim: 6
-  R_min: -6000
-  R_max: 12000
+  R_min: -500
+  R_max: 500
   action_min: -1
   action_max: 1
 

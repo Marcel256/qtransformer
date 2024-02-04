@@ -18,7 +18,7 @@ class SequenceEnvironmentWrapper(WrappedGymEnv):
   def __init__(self,
                env,
                num_stack_frames: int = 1,
-               game_name='', action_dim=1):
+               game_name='', action_dim=1, action_transform=None):
     self._env = env
     self.game_name = game_name
     self.num_stack_frames = num_stack_frames
@@ -28,6 +28,7 @@ class SequenceEnvironmentWrapper(WrappedGymEnv):
     self.done_stack = collections.deque(maxlen=self.num_stack_frames)
     self.info_stack = collections.deque(maxlen=self.num_stack_frames)
     self.action_dim = action_dim
+    self.action_transform = action_transform
 
   @property
   def observation_space(self):
@@ -123,6 +124,9 @@ class SequenceEnvironmentWrapper(WrappedGymEnv):
       self.act_stack[-1] = np.array([action])
     else:
       self.act_stack[-1] = action
+
+    if self.action_transform:
+      action = self.action_transform(action)
     obs, rew, done, tr, info = self._env.step(action)
     self.rew_stack[-1] = rew
     # Update frame stack.
