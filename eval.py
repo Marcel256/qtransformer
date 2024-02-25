@@ -31,5 +31,7 @@ def play_episode(env: SequenceEnvironmentWrapper, model):
         done = truncated or terminated
         steps += 1
         episode_return += reward
+        if steps % 100 == 0:
+            print(steps)
 
     return episode_return

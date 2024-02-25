@@ -9,7 +9,6 @@ def transform_state(history):
 
 
 def play_episode(env: SequenceEnvironmentWrapper, model):
-    env.reset()
     history = env.reset()
     done = False
     steps = 0
@@ -18,6 +17,7 @@ def play_episode(env: SequenceEnvironmentWrapper, model):
     a_min = -1
     a_max = 1
     while not done:
+        print('Hier')
         action = model.predict_action(transform_state(history))[0]
         action = action / action_bins * (a_max-a_min) + a_min
         history, reward, terminated, truncated, info = env.step(action)

@@ -8,8 +8,8 @@ train:
   epochs: 3
   lr: 0.001
   batch_size: 128
-  reg_weight: 0.25
-  tau: 1e-3
+  reg_weight: 1
+  tau: 5e-3
   model_folder: models
 
 gamma: 0.99
@@ -18,8 +18,8 @@ env:
   discrete_actions: False
   state_dim: 17
   action_dim: 6
-  R_min: -500
-  R_max: 500
+  R_min: -550
+  R_max: -60
   action_min: -1
   action_max: 1
 

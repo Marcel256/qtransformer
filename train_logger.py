@@ -1,6 +1,5 @@
 from abc import abstractmethod
 
-
 class Logger(object):
 
     @abstractmethod
@@ -31,3 +30,7 @@ class ConsoleLogger(Logger):
     def log(self, metrics: dict):
         for key in metrics.keys():
             print(key, ": ", metrics[key])
+
+
+
+

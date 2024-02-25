@@ -21,13 +21,20 @@ from collections import deque
 import gymnasium as gym
 
 from train_logger import ConsoleLogger
-from wandb_logger import WandbLogger
 
 def norm_rewards(r, R_min, R_max):
     return (r - R_min) / (R_max - R_min)
 
+def cql_loss(q_values, current_action):
+    """Computes the CQL loss for a batch of Q-values and actions."""
+    logsumexp = torch.logsumexp(q_values, dim=1, keepdim=True)
+    q_a = q_values.gather(2, current_action)
+
+    return (logsumexp - q_a).mean()
+
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def train(cfg : DictConfig) -> None:
+    #wandb.init(entity="marcel98", project="qtransformer")
 
     model_config = cfg['model']
     seq_len = model_config['seq_len']
@@ -79,58 +86,50 @@ def train(cfg : DictConfig) -> None:
     td_loss_list = deque(maxlen=50)
     reg_loss_list = deque(maxlen=50)
 
-    logger = WandbLogger("marcel98", "qtransformer")
-    print(eval(env, model, 10))
+    logger = ConsoleLogger()
+   # print(eval(env, model, 5))
     for epoch in range(epochs):
         for batch in dataloader:
             states, actions, rewards, returns, terminal = batch
 
             states = states.float().to(device)
             actions = torch.reshape(actions, (actions.shape[0], seq_len+1, -1)).int().to(device)
-            returns = returns.float().to(device)
+            #returns = returns.float().to(device)
             rewards = rewards.float().to(device)
             terminal = terminal.unsqueeze(2).float().to(device)
             with torch.no_grad():
-                q_next = torch.max(torch.sigmoid(target_model(states[:, 1:], actions[:,-1])[:, 0].unsqueeze(1)), dim=2, keepdim=True)[0]
+                q_next = torch.max(target_model(states[:, 1:], actions[:,-1])[:, 0].unsqueeze(1), dim=2, keepdim=True)[0]
 
-            q = torch.sigmoid(model(states[:, :-1], actions[:,-2]))
+            q = model(states[:, :-1], actions[:,-2])
 
-            r = rewards.unsqueeze(2)[:,-2].unsqueeze(1) / (R_max - R_min)
+            r = rewards.unsqueeze(2)[:,-2].unsqueeze(1)
 
-            mc_returns_next = norm_rewards(returns.unsqueeze(2)[:,-1].unsqueeze(1), R_min, R_max)
-            next_timestep = torch.maximum(r + gamma * (1-terminal[:,-2].unsqueeze(1))*q_next, mc_returns_next)
+            #mc_returns_next = norm_rewards(returns.unsqueeze(2)[:,-1].unsqueeze(1), R_min, R_max)
+            #next_timestep = torch.maximum(r + gamma * (1-terminal[:,-2].unsqueeze(1))*q_next, mc_returns_next)
+            next_timestep = r + gamma * (1 - terminal[:, -2].unsqueeze(1)) * q_next
 
             if action_dim > 1:
-                mc_returns_curr = norm_rewards(returns.unsqueeze(2)[:, -2].unsqueeze(1), R_min, R_max)
-                curr_timestep = torch.maximum(torch.max(q[:, 1:], dim=2, keepdim=True)[0], mc_returns_curr)
+                #mc_returns_curr = norm_rewards(returns.unsqueeze(2)[:, -2].unsqueeze(1), R_min, R_max)
+                curr_timestep = torch.max(q[:, 1:], dim=2, keepdim=True)[0]#torch.maximum(torch.max(q[:, 1:], dim=2, keepdim=True)[0], mc_returns_curr)
                 next_dim = torch.cat([curr_timestep, next_timestep], dim=1)
             else:
                 next_dim = next_timestep
 
             pred = torch.gather(q, 2, actions[:,-2].unsqueeze(2).long())
 
-            action_mask = torch.ones_like(q)
-            action_mask.scatter_(2, actions[:,-2].unsqueeze(2).long(), 0)
-
-            bin_sum = torch.sum( (q**2) * action_mask)
-
-            reg_loss = bin_sum / action_mask.sum()
-
             td_loss = loss(pred, next_dim.detach())
 
-            err = (td_loss + reg_weight * reg_loss)/2
+            err = 0.5*td_loss + cql_loss(q, actions[:,-2].unsqueeze(2).long())
             optimizer.zero_grad()
             err.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
             loss_list.append(err.item())
             td_loss_list.append(td_loss.item())
-            reg_loss_list.append(reg_loss.item())
+
             optimizer.step()
             soft_update(model, target_model, tau)
             if (i+1) % log_loss_steps == 0:
                 logger.log({"train_loss": np.mean(loss_list),
-                           "td_loss": np.mean(td_loss_list),
-                           "reg_loss": np.mean(reg_loss_list)})
+                           "td_loss": np.mean(td_loss_list)})
 
 
             if (i+1) % eval_steps == 0:

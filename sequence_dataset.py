@@ -2,13 +2,22 @@ import numpy as np
 from torch.utils.data import Dataset
 import pickle
 
+import numpy as np
+
+def convert_action(action, a_min, a_max, action_bins):
+  norm = (action - a_min)/(a_max-a_min)
+
+  return np.rint(norm * action_bins).astype(np.uint8)
 
 class SequenceDataset(Dataset):
 
-    def __init__(self, file, seq_length):
 
+    def __init__(self, file, seq_length):
         with open(file, 'rb') as fh:
             data = pickle.load(fh)
+
+        self.__init__(data, seq_length)
+    def __init__(self, data, seq_length):
 
         #-1 for zero padding at the end
         n_samples = data['observations'].shape[0] - 1
@@ -48,3 +57,26 @@ class SequenceDataset(Dataset):
 
     def __len__(self):
         return len(self.idx_list)
+
+
+    @classmethod
+    def from_d4rl(cls, dataset, gamma=0.99):
+        data = dict()
+        data['observations'] = dataset['observations']
+        r = dataset['rewards']
+        actions = convert_action(dataset['actions'], -1, 1, 128)
+        terminal = dataset['timeouts']
+        ret = np.zeros_like(r)
+        ret[-1] = r[-1]
+        for i in reversed(range(r.shape[0] - 1)):
+            if terminal[i]:
+                ret[i] = r[i]
+            else:
+                ret[i] = r[i] + gamma * ret[i + 1]
+
+        data['returns'] = ret
+        data['actions'] = actions
+        data['rewards'] = r
+
+        return SequenceDataset(data)
+
