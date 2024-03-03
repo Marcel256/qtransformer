@@ -12,15 +12,13 @@ from omegaconf import DictConfig
 
 import numpy as np
 
-from eval import eval
+from d4rl_evaluator import eval
 
 from util import soft_update
 
 from collections import deque
 
-import gymnasium as gym
 
-from train_logger import ConsoleLogger
 from wandb_logger import WandbLogger
 
 def norm_rewards(r, R_min, R_max):
@@ -55,7 +53,7 @@ def train(cfg : DictConfig) -> None:
     a_min = env_config['action_min']
     a_max = env_config['action_max']
 
-    device = torch.device('cpu')
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if discrete_actions:
         action_transform = lambda x: x[0]
@@ -79,7 +77,7 @@ def train(cfg : DictConfig) -> None:
     td_loss_list = deque(maxlen=50)
     reg_loss_list = deque(maxlen=50)
 
-    logger = WandbLogger("marcel98", "qtransformer")
+    logger = WandbLogger(env_config['entity'], env_config['project'])
     print(eval(env, model, 10))
     for epoch in range(epochs):
         for batch in dataloader:
