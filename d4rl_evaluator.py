@@ -1,9 +1,15 @@
 import gym
+import d4rl
 
 import torch
 
 import numpy as np
 from seq_env_wrapper import SequenceEnvironmentWrapper
+
+
+def load_d4rl_env(env_name):
+    env = gym.make(env_name)
+    return env, env.get_dataset()
 
 
 

@@ -127,7 +127,7 @@ class SequenceEnvironmentWrapper(WrappedGymEnv):
 
     if self.action_transform:
       action = self.action_transform(action)
-    obs, rew, done, tr, info = self._env.step(action)
+    obs, rew, done, info = self._env.step(action)
     self.rew_stack[-1] = rew
     # Update frame stack.
     self.obs_stack.append(obs)
@@ -135,5 +135,5 @@ class SequenceEnvironmentWrapper(WrappedGymEnv):
     self.rew_stack.append(0)
     self.info_stack.append(info)
 
-    return self._get_observation(), rew, done, tr, info
+    return self._get_observation(), rew, done, info
 

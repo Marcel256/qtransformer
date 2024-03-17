@@ -12,7 +12,7 @@ from omegaconf import DictConfig
 
 import numpy as np
 
-from d4rl_evaluator import eval
+from d4rl_evaluator import eval, load_d4rl_env
 
 from util import soft_update
 
@@ -32,9 +32,8 @@ def train(cfg : DictConfig) -> None:
     dataset_file = cfg['dataset']
     train_config = cfg['train']
 
-    dataset = SequenceDataset(dataset_file, seq_len)
+
     batch_size = train_config['batch_size']
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     env_config = cfg['env']
     env_name = env_config['id']
     action_dim = env_config['action_dim']
@@ -54,12 +53,20 @@ def train(cfg : DictConfig) -> None:
     a_max = env_config['action_max']
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print('device: ', device)
+    env, data = load_d4rl_env(env_name)
+
+    dataset = SequenceDataset.from_d4rl(data, gamma)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    R_min = np.min(dataset.returns)
+    R_max = np.max(dataset.returns)
 
     if discrete_actions:
         action_transform = lambda x: x[0]
     else:
         action_transform = lambda x: (x/action_bins) * (a_max - a_min) + a_min
-    env = SequenceEnvironmentWrapper(gym.make(env_name), num_stack_frames=seq_len, action_dim=action_dim, action_transform=action_transform)
+    env = SequenceEnvironmentWrapper(env, num_stack_frames=seq_len, action_dim=action_dim, action_transform=action_transform)
     model = QTransformer(state_dim, action_dim, hidden_dim, action_bins, seq_len, device=device)
     target_model = QTransformer(state_dim, action_dim, hidden_dim, action_bins, seq_len, device=device)
     target_model.eval()
@@ -133,7 +140,7 @@ def train(cfg : DictConfig) -> None:
 
             if (i+1) % eval_steps == 0:
                 model.eval()
-                logger.log({"eval_score": eval(env, model, 5)})
+                logger.log({"eval_score": eval(env, model, 10)})
                 torch.save({'model_state': model.state_dict()}, 'models/model-{}.pt'.format(i))
                 model.train()
             i += 1
