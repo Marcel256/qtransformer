@@ -43,8 +43,6 @@ def train(cfg : DictConfig) -> None:
     state_dim = env_config['state_dim']
     hidden_dim = model_config['hidden_dim']
 
-    R_min = env_config['R_min']
-    R_max = env_config['R_max']
     gamma = cfg['gamma']
     tau = train_config['tau']
     reg_weight = train_config['reg_weight']
@@ -56,7 +54,7 @@ def train(cfg : DictConfig) -> None:
     print('device: ', device)
     env, data = load_d4rl_env(env_name)
 
-    dataset = SequenceDataset.from_d4rl(data, gamma)
+    dataset = SequenceDataset.from_d4rl(data, seq_len, gamma)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     R_min = np.min(dataset.returns)
@@ -76,6 +74,7 @@ def train(cfg : DictConfig) -> None:
     optimizer = torch.optim.AdamW(model.parameters(), lr=train_config['lr'])
     loss = MSELoss()
 
+    best_score = -9999
     log_loss_steps = 50
     eval_steps = 500
     i = 0
@@ -140,8 +139,11 @@ def train(cfg : DictConfig) -> None:
 
             if (i+1) % eval_steps == 0:
                 model.eval()
-                logger.log({"eval_score": eval(env, model, 10)})
-                torch.save({'model_state': model.state_dict()}, 'models/model-{}.pt'.format(i))
+                score = eval(env, model, 10)
+                logger.log({"eval_score": score})
+                if score > best_score:
+                    torch.save({'model_state': model.state_dict()}, 'models/model.pt')
+                    best_score = score
                 model.train()
             i += 1
 

@@ -25,18 +25,18 @@ class QTransformer(nn.Module):
         if device:
             self.attn_mask = self.attn_mask.to(device)
 
-        self.pos_enc = nn.Parameter(torch.randn((1, mask_size, hidden_dim))*0.1, requires_grad=True)
+        self.pos_enc = nn.Parameter(torch.randn((1, mask_size, hidden_dim))*0.02, requires_grad=True)
 
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
         """Initialize the weights."""
         if isinstance(module, (nn.Linear)):
-            module.weight.data.normal_(mean=0.0, std=1)
+            module.weight.data.normal_(mean=0.0, std=0.02)
             if module.bias is not None:
                 module.bias.data.zero_()
         elif isinstance(module, nn.Embedding):
-            module.weight.data.normal_(mean=0.0, std=1)
+            module.weight.data.normal_(mean=0.0, std=0.02)
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
         elif isinstance(module, nn.LayerNorm):

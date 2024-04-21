@@ -1,6 +1,6 @@
 import collections
 
-import gymnasium as gym
+import gym
 import numpy as np
 
 class WrappedGymEnv:
@@ -107,7 +107,7 @@ class SequenceEnvironmentWrapper(WrappedGymEnv):
 
   def reset(self):
     """Resets env and returns new observation."""
-    obs, _ = self._env.reset()
+    obs = self._env.reset()
     # Create a N-1 "done" past frames.
     self.pad_current_episode(obs, self.num_stack_frames-1)
     self.obs_stack.append(obs)

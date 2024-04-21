@@ -2,8 +2,6 @@ import numpy as np
 from torch.utils.data import Dataset
 import pickle
 
-import numpy as np
-
 def convert_action(action, a_min, a_max, action_bins):
   norm = (action - a_min)/(a_max-a_min)
 
@@ -60,11 +58,11 @@ class SequenceDataset(Dataset):
 
 
     @classmethod
-    def from_d4rl(cls, dataset, gamma=0.99):
+    def from_d4rl(cls, dataset, seq_len, action_bins, gamma=0.99):
         data = dict()
         data['observations'] = dataset['observations']
         r = dataset['rewards']
-        actions = convert_action(dataset['actions'], -1, 1, 128)
+        actions = convert_action(dataset['actions'], -1, 1, action_bins)
         terminal = dataset['timeouts']
         ret = np.zeros_like(r)
         ret[-1] = r[-1]
@@ -75,8 +73,9 @@ class SequenceDataset(Dataset):
                 ret[i] = r[i] + gamma * ret[i + 1]
 
         data['returns'] = ret
-        data['actions'] = actions
+        data['actions'] = np.clip(actions, 0, action_bins-1)
         data['rewards'] = r
+        data['terminals'] = terminal
 
-        return SequenceDataset(data)
+        return SequenceDataset(data, seq_len)
 
