@@ -15,7 +15,8 @@ class QTransformer(nn.Module):
 
         self.state_emb = nn.Linear(state_dim, hidden_dim)
 
-        self.q_head = nn.Linear(hidden_dim, action_bins)
+        self.advantage = nn.Linear(hidden_dim, action_bins)
+        self.value_head = nn.Linear(hidden_dim, 1)
         self.action_emb = nn.Embedding(action_bins, hidden_dim)
 
         mask_size = action_dim + seq_len - 1
@@ -52,7 +53,10 @@ class QTransformer(nn.Module):
             token = state_token
         token =  token + self.pos_enc
         out = self.transformer(token, attn_mask=self.attn_mask)
-        q_values = self.q_head(out[:,-(self.action_dim):])
+        action_token = out[:,-(self.action_dim):]
+        adv = self.advantage(action_token)
+        value = self.value_head(action_token)
+        q_values = value + (adv - torch.mean(adv, dim=-1))
 
         return q_values
 
