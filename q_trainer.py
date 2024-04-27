@@ -52,9 +52,9 @@ def train(cfg : DictConfig) -> None:
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('device: ', device)
-    env, data = load_d4rl_env(env_name)
+    offline_env, data = load_d4rl_env(env_name)
 
-    dataset = SequenceDataset.from_d4rl(data, seq_len, gamma)
+    dataset = SequenceDataset.from_d4rl(data, seq_len, action_bins, gamma)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     R_min = np.min(dataset.returns)
@@ -64,7 +64,7 @@ def train(cfg : DictConfig) -> None:
         action_transform = lambda x: x[0]
     else:
         action_transform = lambda x: (x/action_bins) * (a_max - a_min) + a_min
-    env = SequenceEnvironmentWrapper(env, num_stack_frames=seq_len, action_dim=action_dim, action_transform=action_transform)
+    env = SequenceEnvironmentWrapper(offline_env, num_stack_frames=seq_len, action_dim=action_dim, action_transform=action_transform)
     model = QTransformer(state_dim, action_dim, hidden_dim, action_bins, seq_len, device=device)
     target_model = QTransformer(state_dim, action_dim, hidden_dim, action_bins, seq_len, device=device)
     target_model.eval()
@@ -139,7 +139,7 @@ def train(cfg : DictConfig) -> None:
 
             if (i+1) % eval_steps == 0:
                 model.eval()
-                score = eval(env, model, 10)
+                score = offline_env.get_normalized_score(eval(env, model, 10))
                 logger.log({"eval_score": score})
                 if score > best_score:
                     torch.save({'model_state': model.state_dict()}, 'models/model.pt')
