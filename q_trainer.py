@@ -84,6 +84,7 @@ def train(cfg : DictConfig) -> None:
     reg_loss_list = deque(maxlen=50)
 
     logger = WandbLogger(env_config['entity'], env_config['project'])
+    print('Env: ', env_name)
     print(eval(env, model, 10))
     for epoch in range(epochs):
         for batch in dataloader:
