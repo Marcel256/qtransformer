@@ -38,6 +38,8 @@ def train(cfg : DictConfig) -> None:
     env_name = env_config['id']
     action_dim = env_config['action_dim']
     action_bins = model_config['action_bins']
+    use_dueling_head = model_config['dueling']
+    use_mc_returns = train_config['mc_returns']
 
     discrete_actions = env_config['discrete_actions']
     state_dim = env_config['state_dim']
@@ -65,7 +67,7 @@ def train(cfg : DictConfig) -> None:
     else:
         action_transform = lambda x: (x/action_bins) * (a_max - a_min) + a_min
     env = SequenceEnvironmentWrapper(offline_env, num_stack_frames=seq_len, action_dim=action_dim, action_transform=action_transform)
-    model = QTransformer(state_dim, action_dim, hidden_dim, action_bins, seq_len, device=device)
+    model = QTransformer(state_dim, action_dim, hidden_dim, action_bins, seq_len, dueling=use_dueling_head, device=device)
     target_model = QTransformer(state_dim, action_dim, hidden_dim, action_bins, seq_len, device=device)
     target_model.eval()
     target_model.to(device)
@@ -103,11 +105,19 @@ def train(cfg : DictConfig) -> None:
             r = rewards.unsqueeze(2)[:,-2].unsqueeze(1) / (R_max - R_min)
 
             mc_returns_next = norm_rewards(returns.unsqueeze(2)[:,-1].unsqueeze(1), R_min, R_max)
-            next_timestep = torch.maximum(r + gamma * (1-terminal[:,-2].unsqueeze(1))*q_next, mc_returns_next)
+            q_target_next = r + gamma * (1-terminal[:,-2].unsqueeze(1))*q_next
+            if use_mc_returns:
+                next_timestep = torch.maximum(q_target_next, mc_returns_next)
+            else:
+                next_timestep = q_target_next
 
             if action_dim > 1:
                 mc_returns_curr = norm_rewards(returns.unsqueeze(2)[:, -2].unsqueeze(1), R_min, R_max)
-                curr_timestep = torch.maximum(torch.max(q[:, 1:], dim=2, keepdim=True)[0], mc_returns_curr)
+                q_target_curr = torch.max(q[:, 1:], dim=2, keepdim=True)[0]
+                if use_mc_returns:
+                    curr_timestep = torch.maximum(q_target_curr, mc_returns_curr)
+                else:
+                    curr_timestep = q_target_curr
                 next_dim = torch.cat([curr_timestep, next_timestep], dim=1)
             else:
                 next_dim = next_timestep

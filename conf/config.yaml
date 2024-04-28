@@ -4,6 +4,7 @@ model:
   hidden_dim: 256
   action_bins: 4
   seq_len: 4
+  dueling: False
 train:
   epochs: 3
   lr: 0.001
@@ -11,13 +12,14 @@ train:
   reg_weight: 1
   tau: 1e-3
   model_folder: models
+  mc_returns: True
 
 gamma: 0.99
 env:
-  id: CartPole-v1
-  discrete_actions: True
-  state_dim: 4
-  action_dim: 1
+  id: halfcheetah-medium-expert-v2
+  discrete_actions: False
+  state_dim: 17
+  action_dim: 6
   R_min: 0
   R_max: 500
   action_min: -1

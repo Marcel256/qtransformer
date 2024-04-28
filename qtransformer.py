@@ -5,9 +5,27 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
+class DuelingHead(nn.Module):
+
+    def __init__(self, input_dim, output_dim, expansion_factor=2):
+        self.hidden_dim = input_dim * expansion_factor
+        self.stem = nn.Sequential(
+            nn.Linear(input_dim, self.hidden_dim),
+            nn.SiLU()
+        )
+        self.advantage = nn.Linear(self.hidden_dim, output_dim)
+        self.value_head = nn.Linear(self.hidden_dim, 1)
+
+    def forward(self, x):
+        hidden = self.stem(x)
+        adv = self.advantage(hidden)
+        value = self.value_head(hidden)
+        return value + (adv - torch.mean(adv, dim=-1, keepdim=True))
+
+
 class QTransformer(nn.Module):
 
-    def __init__(self, state_dim, action_dim, hidden_dim, action_bins, seq_len, n_layers=3, n_heads=4, device=None):
+    def __init__(self, state_dim, action_dim, hidden_dim, action_bins, seq_len, n_layers=3, n_heads=4, dueling=False, device=None):
         super().__init__()
         self.transformer = Transformer(hidden_dim, n_heads, n_layers)
 
@@ -15,8 +33,11 @@ class QTransformer(nn.Module):
 
         self.state_emb = nn.Linear(state_dim, hidden_dim)
 
-        self.advantage = nn.Linear(hidden_dim, action_bins)
-        self.value_head = nn.Linear(hidden_dim, 1)
+        if dueling:
+            self.out = DuelingHead(hidden_dim, action_bins)
+        else:
+            self.out = nn.Linear(hidden_dim, action_bins)
+
         self.action_emb = nn.Embedding(action_bins, hidden_dim)
 
         mask_size = action_dim + seq_len - 1
@@ -54,9 +75,7 @@ class QTransformer(nn.Module):
         token =  token + self.pos_enc
         out = self.transformer(token, attn_mask=self.attn_mask)
         action_token = out[:,-(self.action_dim):]
-        adv = self.advantage(action_token)
-        value = self.value_head(action_token)
-        q_values = value + (adv - torch.mean(adv, dim=-1))
+        q_values = self.out(action_token)
 
         return q_values
 
