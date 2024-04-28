@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 class DuelingHead(nn.Module):
 
     def __init__(self, input_dim, output_dim, expansion_factor=2):
+        super().__init__()
         self.hidden_dim = input_dim * expansion_factor
         self.stem = nn.Sequential(
             nn.Linear(input_dim, self.hidden_dim),
