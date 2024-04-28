@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 
 
 import hydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 import numpy as np
 
@@ -48,6 +48,7 @@ def train(cfg : DictConfig) -> None:
     gamma = cfg['gamma']
     tau = train_config['tau']
     reg_weight = train_config['reg_weight']
+    grad_norm = train_config['grad_norm']
 
     a_min = env_config['action_min']
     a_max = env_config['action_max']
@@ -86,7 +87,7 @@ def train(cfg : DictConfig) -> None:
     reg_loss_list = deque(maxlen=50)
 
     logger = WandbLogger(env_config['entity'], env_config['project'])
-    print('Env: ', env_name)
+    print(OmegaConf.to_yaml(cfg))
     print(eval(env, model, 10))
     for epoch in range(epochs):
         for batch in dataloader:
@@ -136,7 +137,7 @@ def train(cfg : DictConfig) -> None:
             err = (td_loss + reg_weight * reg_loss)/2
             optimizer.zero_grad()
             err.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), grad_norm)
             loss_list.append(err.item())
             td_loss_list.append(td_loss.item())
             reg_loss_list.append(reg_loss.item())

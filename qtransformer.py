@@ -42,7 +42,9 @@ class QTransformer(nn.Module):
         self.action_emb = nn.Embedding(action_bins, hidden_dim)
 
         mask_size = action_dim + seq_len - 1
-        self.attn_mask = torch.from_numpy(np.logical_not(np.tril(np.ones((mask_size, mask_size)))))
+        tri_mask = np.tril(np.ones((mask_size, mask_size)))
+        tri_mask[:seq_len, :seq_len] = 1
+        self.attn_mask = torch.from_numpy(np.logical_not(tri_mask))
         self.device = device
         if device:
             self.attn_mask = self.attn_mask.to(device)

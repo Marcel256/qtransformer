@@ -13,6 +13,7 @@ train:
   tau: 1e-3
   model_folder: models
   mc_returns: True
+  grad_norm: 1
 
 gamma: 0.99
 env:
