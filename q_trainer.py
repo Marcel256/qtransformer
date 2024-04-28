@@ -68,7 +68,7 @@ def train(cfg : DictConfig) -> None:
         action_transform = lambda x: (x/action_bins) * (a_max - a_min) + a_min
     env = SequenceEnvironmentWrapper(offline_env, num_stack_frames=seq_len, action_dim=action_dim, action_transform=action_transform)
     model = QTransformer(state_dim, action_dim, hidden_dim, action_bins, seq_len, dueling=use_dueling_head, device=device)
-    target_model = QTransformer(state_dim, action_dim, hidden_dim, action_bins, seq_len, device=device)
+    target_model = QTransformer(state_dim, action_dim, hidden_dim, action_bins, seq_len, dueling=use_dueling_head, device=device)
     target_model.eval()
     target_model.to(device)
     model.to(device)
