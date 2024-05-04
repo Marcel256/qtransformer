@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from transformer.transformer import Transformer
 import numpy as np
+from transformer.llama import LlamaModel
 
 import matplotlib.pyplot as plt
 
@@ -28,7 +29,9 @@ class QTransformer(nn.Module):
 
     def __init__(self, state_dim, action_dim, hidden_dim, action_bins, seq_len, n_layers=3, n_heads=4, dueling=False, device=None):
         super().__init__()
-        self.transformer = Transformer(hidden_dim, n_heads, n_layers)
+
+        mask_size = action_dim + seq_len - 1
+        self.transformer = LlamaModel(hidden_dim, num_heads=n_heads, max_position=mask_size, num_layers=n_layers)#Transformer(hidden_dim, n_heads, n_layers)
 
         self.action_dim = action_dim
 
@@ -41,15 +44,19 @@ class QTransformer(nn.Module):
 
         self.action_emb = nn.Embedding(action_bins, hidden_dim)
 
-        mask_size = action_dim + seq_len - 1
+
         tri_mask = np.tril(np.ones((mask_size, mask_size)))
         tri_mask[:seq_len, :seq_len] = 1
         self.attn_mask = torch.from_numpy(np.logical_not(tri_mask))
+        self.attn_mask = self.attn_mask * torch.finfo(torch.float32).min
+        self.attn_mask = self.attn_mask.unsqueeze(0).unsqueeze(0)
         self.device = device
+        self.pos_ids = torch.arange(0, mask_size).long().unsqueeze(0)
         if device:
             self.attn_mask = self.attn_mask.to(device)
+            self.pos_ids = self.pos_ids.to(device)
 
-        self.pos_enc = nn.Parameter(torch.randn((1, mask_size, hidden_dim))*0.02, requires_grad=True)
+        #self.pos_enc = nn.Parameter(torch.randn((1, mask_size, hidden_dim))*0.02, requires_grad=True)
 
         self.apply(self._init_weights)
 
@@ -75,8 +82,8 @@ class QTransformer(nn.Module):
             token = torch.cat((state_token, a_token), dim=1)
         else:
             token = state_token
-        token =  token + self.pos_enc
-        out = self.transformer(token, attn_mask=self.attn_mask)
+        #token =  token + self.pos_enc
+        out = self.transformer(token, attention_mask=self.attn_mask, position_ids=self.pos_ids)
         action_token = out[:,-(self.action_dim):]
         q_values = self.out(action_token)
 
