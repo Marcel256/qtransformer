@@ -113,7 +113,7 @@ def train(cfg : DictConfig) -> None:
             r = rewards.unsqueeze(2)[:,-2].unsqueeze(1) / (R_max - R_min)
 
             mc_returns_next = norm_rewards(returns.unsqueeze(2)[:,-1].unsqueeze(1), R_min, R_max)
-            q_target_next = r + gamma * (1-terminal[:,-2].unsqueeze(1))*q_next
+            q_target_next = r + gamma * (1-terminal[:,-2].unsqueeze(1))*torch.sigmoid(q_next)
             if use_mc_returns:
                 next_timestep = torch.maximum(q_target_next, mc_returns_next)
             else:
@@ -130,14 +130,14 @@ def train(cfg : DictConfig) -> None:
             else:
                 next_dim = next_timestep
 
-            pred = torch.gather(q, 2, actions[:,-2].unsqueeze(2).long())
+            pred = torch.sigmoid(torch.gather(q, 2, actions[:,-2].unsqueeze(2).long()))
 
             action_mask = torch.ones_like(q)
             action_mask.scatter_(2, actions[:,-2].unsqueeze(2).long(), 0)
 
             bin_sum = torch.sum( (q**2) * action_mask)
 
-            reg_loss = cql_loss(q, actions[:,-2])#bin_sum / action_mask.sum()
+            reg_loss = cql_loss(q, actions[:,-2].unsqueeze(2).long())#bin_sum / action_mask.sum()
 
             td_loss = loss(pred, next_dim.detach())
 
