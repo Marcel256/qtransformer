@@ -130,14 +130,16 @@ def train(cfg : DictConfig) -> None:
             else:
                 next_dim = next_timestep
 
-            pred = torch.sigmoid(torch.gather(q, 2, actions[:,-2].unsqueeze(2).long()))
+            sel = torch.gather(q, 2, actions[:,-2].unsqueeze(2).long())
+            pred = torch.sigmoid(sel)
 
             action_mask = torch.ones_like(q)
             action_mask.scatter_(2, actions[:,-2].unsqueeze(2).long(), 0)
 
             bin_sum = torch.sum( (q**2) * action_mask)
+            logsumexp = torch.logsumexp(q, dim=2, keepdim=True)
 
-            reg_loss = cql_loss(q, actions[:,-2].unsqueeze(2).long())#bin_sum / action_mask.sum()
+            reg_loss = (logsumexp - sel).mean() #bin_sum / action_mask.sum()
 
             td_loss = loss(pred, next_dim.detach())
 
