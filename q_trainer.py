@@ -121,7 +121,7 @@ def train(cfg : DictConfig) -> None:
 
             if action_dim > 1:
                 mc_returns_curr = norm_rewards(returns.unsqueeze(2)[:, -2].unsqueeze(1), R_min, R_max)
-                q_target_curr = torch.max(q[:, 1:], dim=2, keepdim=True)[0]
+                q_target_curr = torch.max(torch.sigmoid(q[:, 1:]), dim=2, keepdim=True)[0]
                 if use_mc_returns:
                     curr_timestep = torch.maximum(q_target_curr, mc_returns_curr)
                 else:
