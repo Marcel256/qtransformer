@@ -79,3 +79,24 @@ class SequenceDataset(Dataset):
 
         return SequenceDataset(data, seq_len)
 
+    @classmethod
+    def from_rollouts(cls, dataset, seq_len, gamma=0.99):
+        data = dict()
+        data['observations'] = dataset['observations']
+        r = dataset['rewards']
+        actions = dataset['actions']
+        terminal = dataset['terminals']
+        ret = np.zeros_like(r)
+        ret[-1] = r[-1]
+        for i in reversed(range(r.shape[0] - 1)):
+            if terminal[i]:
+                ret[i] = r[i]
+            else:
+                ret[i] = r[i] + gamma * ret[i + 1]
+
+        data['returns'] = ret
+        data['actions'] = actions
+        data['rewards'] = r
+        data['terminals'] = terminal
+
+        return SequenceDataset(data, seq_len)
