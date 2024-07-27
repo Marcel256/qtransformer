@@ -15,6 +15,7 @@ import numpy as np
 from d4rl_evaluator import eval, load_d4rl_env
 
 from util import soft_update
+from schedulers import get_cosine_schedule_with_warmup
 
 from collections import deque
 
@@ -40,6 +41,7 @@ def train(cfg : DictConfig) -> None:
     action_bins = model_config['action_bins']
     use_dueling_head = model_config['dueling']
     use_mc_returns = train_config['mc_returns']
+    total_steps = train_config['total_steps']
 
     discrete_actions = env_config['discrete_actions']
     state_dim = env_config['state_dim']
@@ -75,13 +77,13 @@ def train(cfg : DictConfig) -> None:
     model.to(device)
     soft_update(model, target_model, 1)
     optimizer = torch.optim.AdamW(model.parameters(), lr=train_config['lr'])
+    scheduler = get_cosine_schedule_with_warmup(optimizer, total_steps, total_steps)
     loss = MSELoss()
 
     best_score = -9999
     log_loss_steps = 50
     eval_steps = 500
     i = 0
-    epochs = train_config['epochs']
     loss_list = deque(maxlen=50)
     td_loss_list = deque(maxlen=50)
     reg_loss_list = deque(maxlen=50)
@@ -89,7 +91,7 @@ def train(cfg : DictConfig) -> None:
     logger = WandbLogger(env_config['entity'], env_config['project'])
     print(OmegaConf.to_yaml(cfg))
     print(eval(env, model, 10))
-    for epoch in range(epochs):
+    while i < total_steps:
         for batch in dataloader:
             states, actions, rewards, returns, terminal = batch
 
@@ -143,6 +145,7 @@ def train(cfg : DictConfig) -> None:
             reg_loss_list.append(reg_loss.item())
             optimizer.step()
             soft_update(model, target_model, tau)
+            scheduler.step()
             if (i+1) % log_loss_steps == 0:
                 logger.log({"train_loss": np.mean(loss_list),
                            "td_loss": np.mean(td_loss_list),
@@ -154,10 +157,14 @@ def train(cfg : DictConfig) -> None:
                 score = offline_env.get_normalized_score(eval(env, model, 10))
                 logger.log({"eval_score": score})
                 if score > best_score:
-                    torch.save({'model_state': model.state_dict()}, 'models/model.pt')
+                    torch.save({'model_state': model.state_dict()}, 'models/best.pt')
                     best_score = score
                 model.train()
             i += 1
+    model.eval()
+    score = offline_env.get_normalized_score(eval(env, model, 10))
+    logger.log({"eval_score": score})
+    torch.save({'model_state': model.state_dict()}, 'models/final.pt')
 
 
 

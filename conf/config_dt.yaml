@@ -1,0 +1,29 @@
+model:
+  n_layers: 3
+  n_heads: 1
+  hidden_dim: 128
+  action_bins: 128
+  seq_len: 4
+  dueling: True
+train:
+  epochs: 3
+  lr: 1e-4
+  batch_size: 64
+  reg_weight: 1
+  tau: 1e-3
+  model_folder: models
+  mc_returns: True
+  grad_norm: 0.25
+  total_steps: 10e5
+
+gamma: 0.99
+env:
+  id: halfcheetah-medium-expert-v2
+  discrete_actions: False
+  state_dim: 17
+  action_dim: 6
+  R_min: 0
+  R_max: 500
+  action_min: -1
+  action_max: 1
+
