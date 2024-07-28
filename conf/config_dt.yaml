@@ -14,7 +14,8 @@ train:
   model_folder: models
   mc_returns: True
   grad_norm: 0.25
-  total_steps: 10e5
+  total_steps: 1e5
+  weight_decay: 1e-4
 
 gamma: 0.99
 env:

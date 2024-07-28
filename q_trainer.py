@@ -42,6 +42,7 @@ def train(cfg : DictConfig) -> None:
     use_dueling_head = model_config['dueling']
     use_mc_returns = train_config['mc_returns']
     total_steps = train_config['total_steps']
+    weight_decay = train_config['weight_decay']
 
     discrete_actions = env_config['discrete_actions']
     state_dim = env_config['state_dim']
@@ -76,13 +77,13 @@ def train(cfg : DictConfig) -> None:
     target_model.to(device)
     model.to(device)
     soft_update(model, target_model, 1)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=train_config['lr'])
+    optimizer = torch.optim.AdamW(model.parameters(), lr=train_config['lr'], weight_decay=weight_decay)
     scheduler = get_cosine_schedule_with_warmup(optimizer, total_steps, total_steps)
     loss = MSELoss()
 
     best_score = -9999
     log_loss_steps = 50
-    eval_steps = 500
+    eval_steps = 1000
     i = 0
     loss_list = deque(maxlen=50)
     td_loss_list = deque(maxlen=50)
