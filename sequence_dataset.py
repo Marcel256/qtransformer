@@ -26,6 +26,7 @@ class SequenceDataset(Dataset):
         self.rewards = data['rewards']
         self.returns = data['returns']
         self.terminals = data['terminals']
+        self.timesteps = data['timesteps']
 
         self.done_idx = np.where(self.terminals == 1)[0]
         self.seq_length = seq_length
@@ -51,7 +52,7 @@ class SequenceDataset(Dataset):
         idx = self.idx_list[item]
         end = idx + self.seq_length + 1
 
-        return self.obs[idx:end], self.action[idx: end], self.rewards[idx:end], self.returns[idx:end], self.terminals[idx:end]
+        return self.obs[idx:end], self.action[idx: end], self.rewards[idx:end], self.returns[idx:end], self.terminals[idx:end], self.timesteps[idx:end]
 
     def __len__(self):
         return len(self.idx_list)
@@ -65,13 +66,22 @@ class SequenceDataset(Dataset):
         actions = convert_action(dataset['actions'], -1, 1, action_bins)
         terminal = dataset['timeouts']
         ret = np.zeros_like(r)
+        timesteps = np.zeros_like(r)
         ret[-1] = r[-1]
         for i in reversed(range(r.shape[0] - 1)):
             if terminal[i]:
                 ret[i] = r[i]
             else:
                 ret[i] = r[i] + gamma * ret[i + 1]
-
+        t = 0
+        for i in range(r.shape):
+            if terminal[i]:
+                timesteps[i] = t
+                t = 0
+            else:
+                timesteps[i] = t
+                t += 1
+        data['timesteps'] = timesteps
         data['returns'] = ret
         data['actions'] = np.clip(actions, 0, action_bins-1)
         data['rewards'] = r
