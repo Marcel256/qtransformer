@@ -27,7 +27,7 @@ class DuelingHead(nn.Module):
 
 class QTransformer(nn.Module):
 
-    def __init__(self, state_dim, action_dim, hidden_dim, action_bins, seq_len, n_layers=3, n_heads=4, dueling=False, device=None):
+    def __init__(self, state_dim, action_dim, hidden_dim, action_bins, seq_len, n_layers=3, n_heads=4, max_ep_len=1000, dueling=False, device=None):
         super().__init__()
 
         mask_size = action_dim + seq_len - 1
@@ -43,6 +43,7 @@ class QTransformer(nn.Module):
             self.out = nn.Linear(hidden_dim, action_bins)
 
         self.action_emb = nn.Embedding(action_bins, hidden_dim)
+        self.time_emb = nn.Embedding(max_ep_len, hidden_dim)
 
 
         tri_mask = np.tril(np.ones((mask_size, mask_size)))
@@ -75,8 +76,9 @@ class QTransformer(nn.Module):
             module.weight.data.fill_(1.0)
 
 
-    def forward(self, states, actions):
-        state_token = self.state_emb(states)
+    def forward(self, states, actions, timesteps):
+        time = self.time_emb(timesteps)
+        state_token = self.state_emb(states) + time
         if self.action_dim > 1:
             a_token = self.action_emb(actions[:,:-1])
             token = torch.cat((state_token, a_token), dim=1)

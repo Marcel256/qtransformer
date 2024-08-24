@@ -94,12 +94,13 @@ def train(cfg : DictConfig) -> None:
     print(eval(env, model, 10))
     while i < total_steps:
         for batch in dataloader:
-            states, actions, rewards, returns, terminal = batch
+            states, actions, rewards, returns, terminal, timesteps  = batch
 
             states = states.float().to(device)
             actions = torch.reshape(actions, (actions.shape[0], seq_len+1, -1)).int().to(device)
             returns = returns.float().to(device)
             rewards = rewards.float().to(device)
+            timesteps = timesteps.to(device)
             terminal = terminal.unsqueeze(2).float().to(device)
             with torch.no_grad():
                 q_next = torch.max(torch.sigmoid(target_model(states[:, 1:], actions[:,-1])[:, 0].unsqueeze(1)), dim=2, keepdim=True)[0]
