@@ -92,12 +92,13 @@ class QTransformer(nn.Module):
         return q_values
 
 
-    def predict_action(self, states):
+    def predict_action(self, states, timesteps):
         actions = torch.zeros((states.shape[0], self.action_dim)).int().to(self.device)
         states = states.to(self.device)
+        timesteps = timesteps.to(self.device)
         with torch.no_grad():
             for i in range(self.action_dim):
-                q_values = self.forward(states, actions)
+                q_values = self.forward(states, actions, timesteps)
                 indices = torch.argmax(q_values[:, -self.action_dim+i], dim=-1)
                 actions[:, i] = indices
 

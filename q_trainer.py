@@ -103,9 +103,9 @@ def train(cfg : DictConfig) -> None:
             timesteps = timesteps.to(device)
             terminal = terminal.unsqueeze(2).float().to(device)
             with torch.no_grad():
-                q_next = torch.max(torch.sigmoid(target_model(states[:, 1:], actions[:,-1])[:, 0].unsqueeze(1)), dim=2, keepdim=True)[0]
+                q_next = torch.max(torch.sigmoid(target_model(states[:, 1:], actions[:,-1], timesteps[:,1:])[:, 0].unsqueeze(1)), dim=2, keepdim=True)[0]
 
-            q = torch.sigmoid(model(states[:, :-1], actions[:,-2]))
+            q = torch.sigmoid(model(states[:, :-1], actions[:,-2], timesteps[:,:-1]))
 
             r = rewards.unsqueeze(2)[:,-2].unsqueeze(1) / (R_max - R_min)
 

@@ -33,7 +33,8 @@ def play_episode(env: SequenceEnvironmentWrapper, model):
     steps = 0
     episode_return = 0
     while not done:
-        action = model.predict_action(transform_state(history))[0]
+        state = transform_state(history)
+        action = model.predict_action(state, torch.clip(torch.arange(steps-state.shape[1], steps+1),0, 1000).unsqueeze(0))[0]
         history, reward, done, info = env.step(action)
         steps += 1
         episode_return += reward
