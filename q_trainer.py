@@ -76,6 +76,9 @@ def train(cfg : DictConfig) -> None:
     target_model.eval()
     target_model.to(device)
     model.to(device)
+    orig_model = model
+    target_model = torch.compile(target_model)
+    model = torch.compile(model)
     soft_update(model, target_model, 1)
     optimizer = torch.optim.AdamW(model.parameters(), lr=train_config['lr'], weight_decay=weight_decay)
     scheduler = get_cosine_schedule_with_warmup(optimizer, total_steps, total_steps)
@@ -100,7 +103,7 @@ def train(cfg : DictConfig) -> None:
             actions = torch.reshape(actions, (actions.shape[0], seq_len+1, -1)).int().to(device)
             returns = returns.float().to(device)
             rewards = rewards.float().to(device)
-            timesteps = timesteps.to(device)
+            timesteps = timesteps.int().to(device)
             terminal = terminal.unsqueeze(2).float().to(device)
             with torch.no_grad():
                 q_next = torch.max(torch.sigmoid(target_model(states[:, 1:], actions[:,-1], timesteps[:,1:])[:, 0].unsqueeze(1)), dim=2, keepdim=True)[0]
@@ -156,17 +159,17 @@ def train(cfg : DictConfig) -> None:
 
             if (i+1) % eval_steps == 0:
                 model.eval()
-                score = offline_env.get_normalized_score(eval(env, model, 10))
+                score = eval(env, model, 10)
                 logger.log({"eval_score": score})
                 if score > best_score:
-                    torch.save({'model_state': model.state_dict()}, 'models/best.pt')
+                    torch.save({'model_state': orig_model.state_dict()}, 'models/best.pt')
                     best_score = score
                 model.train()
             i += 1
     model.eval()
-    score = offline_env.get_normalized_score(eval(env, model, 10))
+    score = eval(env, model, 10)
     logger.log({"eval_score": score})
-    torch.save({'model_state': model.state_dict()}, 'models/final.pt')
+    torch.save({'model_state': orig_model.state_dict()}, 'models/final.pt')
 
 
 

@@ -74,7 +74,7 @@ class SequenceDataset(Dataset):
             else:
                 ret[i] = r[i] + gamma * ret[i + 1]
         t = 0
-        for i in range(r.shape):
+        for i in range(r.shape[0]):
             if terminal[i]:
                 timesteps[i] = t
                 t = 0

@@ -137,3 +137,6 @@ class SequenceEnvironmentWrapper(WrappedGymEnv):
 
     return self._get_observation(), rew, done, info
 
+  def get_normalized_score(self, score):
+    return self._env.get_normalized_score(score)
+

@@ -39,4 +39,4 @@ def play_episode(env: SequenceEnvironmentWrapper, model):
         steps += 1
         episode_return += reward
 
-    return episode_return
+    return env.get_normalized_score(episode_return)
