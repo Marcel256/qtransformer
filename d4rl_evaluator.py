@@ -70,7 +70,7 @@ def batched_eval(env_name, model, episodes, num_stack_frames=4, action_dim=1, ac
 
         steps += 1
 
-    return returns
+    return np.mean(returns)
 
 
 

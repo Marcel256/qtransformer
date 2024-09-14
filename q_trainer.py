@@ -12,7 +12,7 @@ from omegaconf import DictConfig, OmegaConf
 
 import numpy as np
 
-from d4rl_evaluator import eval, load_d4rl_env
+from d4rl_evaluator import eval, load_d4rl_env, batched_eval
 
 from util import soft_update
 from schedulers import get_cosine_schedule_with_warmup
@@ -21,13 +21,15 @@ from collections import deque
 
 
 from wandb_logger import WandbLogger
+import dotenv
+import os
 
 def norm_rewards(r, R_min, R_max):
     return (r - R_min) / (R_max - R_min)
 
 @hydra.main(version_base=None, config_path="conf", config_name="config")
 def train(cfg : DictConfig) -> None:
-
+    dotenv.load_dotenv()
     model_config = cfg['model']
     seq_len = model_config['seq_len']
     dataset_file = cfg['dataset']
@@ -70,7 +72,7 @@ def train(cfg : DictConfig) -> None:
         action_transform = lambda x: x[0]
     else:
         action_transform = lambda x: (x/action_bins) * (a_max - a_min) + a_min
-    env = SequenceEnvironmentWrapper(offline_env, num_stack_frames=seq_len, action_dim=action_dim, action_transform=action_transform)
+    #env = SequenceEnvironmentWrapper(offline_env, num_stack_frames=seq_len, action_dim=action_dim, action_transform=action_transform)
     model = QTransformer(state_dim, action_dim, hidden_dim, action_bins, seq_len, dueling=use_dueling_head, device=device)
     target_model = QTransformer(state_dim, action_dim, hidden_dim, action_bins, seq_len, dueling=use_dueling_head, device=device)
     target_model.eval()
@@ -91,10 +93,11 @@ def train(cfg : DictConfig) -> None:
     loss_list = deque(maxlen=50)
     td_loss_list = deque(maxlen=50)
     reg_loss_list = deque(maxlen=50)
+    eval_episodes=10
 
-    logger = WandbLogger(env_config['entity'], env_config['project'])
+    logger = WandbLogger(os.environ['WANDB_ENTITY'], os.environ['WANDB_PROJECT'])
     print(OmegaConf.to_yaml(cfg))
-    print(eval(env, model, 10))
+    # print(batched_eval(env_name, model,eval_episodes, num_stack_frames=seq_len, action_dim=action_dim,action_transform=action_transform))
     while i < total_steps:
         for batch in dataloader:
             states, actions, rewards, returns, terminal, timesteps  = batch
@@ -159,16 +162,16 @@ def train(cfg : DictConfig) -> None:
 
             if (i+1) % eval_steps == 0:
                 model.eval()
-                score = eval(env, model, 10)
-                logger.log({"eval_score": score})
+                score = batched_eval(env_name, model,eval_episodes, num_stack_frames=seq_len, action_dim=action_dim,action_transform=action_transform)
+                logger.log({"eval_score": offline_env.get_normalized_score(score)})
                 if score > best_score:
                     torch.save({'model_state': orig_model.state_dict()}, 'models/best.pt')
                     best_score = score
                 model.train()
             i += 1
     model.eval()
-    score = eval(env, model, 10)
-    logger.log({"eval_score": score})
+    score = batched_eval(env_name, model,eval_episodes, num_stack_frames=seq_len, action_dim=action_dim,action_transform=action_transform)
+    logger.log({"eval_score": offline_env.get_normalized_score(score)})
     torch.save({'model_state': orig_model.state_dict()}, 'models/final.pt')
 
 
