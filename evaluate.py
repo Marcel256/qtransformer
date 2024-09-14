@@ -1,11 +1,11 @@
 import torch
 
 from qtransformer import QTransformer
-from seq_env_wrapper import SequenceEnvironmentWrapper
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
-from d4rl_evaluator import eval, load_d4rl_env
+from d4rl_evaluator import batched_eval
+import numpy as np
 
 
 def norm_rewards(r, R_min, R_max):
@@ -34,13 +34,12 @@ def evaluate(cfg: DictConfig) -> None:
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('device: ', device)
-    offline_env, data = load_d4rl_env(env_name)
+
     if discrete_actions:
         action_transform = lambda x: x[0]
     else:
         action_transform = lambda x: (x / action_bins) * (a_max - a_min) + a_min
-    env = SequenceEnvironmentWrapper(offline_env, num_stack_frames=seq_len, action_dim=action_dim,
-                                     action_transform=action_transform)
+
     model = QTransformer(state_dim, action_dim, hidden_dim, action_bins, seq_len, dueling=use_dueling_head,
                          device=device)
 
@@ -51,7 +50,8 @@ def evaluate(cfg: DictConfig) -> None:
     model.eval()
 
     print(OmegaConf.to_yaml(cfg))
-    print('Normalized Score: ', offline_env.get_normalized_score(eval(env, model, 100)))
+    scores = batched_eval(env_name, model, num_stack_frames=seq_len, action_dim=action_dim,action_transform=action_transform)
+    print('Normalized Score: ', np.mean(scores))
 
 
 if __name__ == "__main__":
