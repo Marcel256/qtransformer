@@ -105,9 +105,9 @@ class SequenceEnvironmentWrapper(WrappedGymEnv):
     }
     return episode_history
 
-  def reset(self):
+  def reset(self, seed=None):
     """Resets env and returns new observation."""
-    obs = self._env.reset()
+    obs = self._env.reset(seed=seed)
     # Create a N-1 "done" past frames.
     self.pad_current_episode(obs, self.num_stack_frames-1)
     self.obs_stack.append(obs)

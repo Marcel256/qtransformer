@@ -5,7 +5,8 @@ import torch
 
 import numpy as np
 from seq_env_wrapper import SequenceEnvironmentWrapper
-
+import random
+random.seed(0)
 
 def load_d4rl_env(env_name):
     env = gym.make(env_name)
@@ -52,7 +53,7 @@ def batched_eval(env_name, model, episodes, num_stack_frames=4, action_dim=1, ac
     dones = []
     for ep in range(episodes):
         env = SequenceEnvironmentWrapper(gym.make(env_name), num_stack_frames=num_stack_frames, action_dim=action_dim, action_transform=action_transform)
-        history.append(env.reset())
+        history.append(env.reset(seed=random.randint(0, 2**32 - 1)))
         returns.append(0)
         dones.append(False)
         envs.append(env)

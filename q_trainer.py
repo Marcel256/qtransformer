@@ -2,7 +2,6 @@ import torch
 from torch.nn import MSELoss
 
 from qtransformer import QTransformer
-from seq_env_wrapper import SequenceEnvironmentWrapper
 from sequence_dataset import SequenceDataset
 from torch.utils.data import DataLoader
 
@@ -12,7 +11,7 @@ from omegaconf import DictConfig, OmegaConf
 
 import numpy as np
 
-from d4rl_evaluator import eval, load_d4rl_env, batched_eval
+from d4rl_evaluator import load_d4rl_env, batched_eval
 
 from util import soft_update
 from schedulers import get_cosine_schedule_with_warmup
@@ -54,12 +53,14 @@ def train(cfg : DictConfig) -> None:
     tau = train_config['tau']
     reg_weight = train_config['reg_weight']
     grad_norm = train_config['grad_norm']
+    seed = train_config['seed'] if 'seed' in train_config else 0
 
     a_min = env_config['action_min']
     a_max = env_config['action_max']
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('device: ', device)
+    torch.manual_seed(seed)
     offline_env, data = load_d4rl_env(env_name)
 
     dataset = SequenceDataset.from_d4rl(data, seq_len, action_bins, gamma)
@@ -97,6 +98,7 @@ def train(cfg : DictConfig) -> None:
 
     logger = WandbLogger(os.environ['WANDB_ENTITY'], os.environ['WANDB_PROJECT'])
     print(OmegaConf.to_yaml(cfg))
+
     # print(batched_eval(env_name, model,eval_episodes, num_stack_frames=seq_len, action_dim=action_dim,action_transform=action_transform))
     while i < total_steps:
         for batch in dataloader:
