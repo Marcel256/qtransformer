@@ -54,11 +54,14 @@ def train(cfg : DictConfig) -> None:
     reg_weight = train_config['reg_weight']
     grad_norm = train_config['grad_norm']
     seed = train_config['seed'] if 'seed' in train_config else 0
+    model_folder = train_config['model_folder']
 
     a_min = env_config['action_min']
     a_max = env_config['action_max']
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    if not os.path.exists(model_folder):
+        os.mkdir(model_folder)
     print('device: ', device)
     torch.manual_seed(seed)
     offline_env, data = load_d4rl_env(env_name)
@@ -84,7 +87,7 @@ def train(cfg : DictConfig) -> None:
     model = torch.compile(model)
     soft_update(model, target_model, 1)
     optimizer = torch.optim.AdamW(model.parameters(), lr=train_config['lr'], weight_decay=weight_decay)
-    scheduler = get_cosine_schedule_with_warmup(optimizer, total_steps, total_steps)
+    scheduler = get_cosine_schedule_with_warmup(optimizer, int(total_steps*0.1), total_steps)
     loss = MSELoss()
 
     best_score = -9999
@@ -167,14 +170,14 @@ def train(cfg : DictConfig) -> None:
                 score = batched_eval(env_name, model,eval_episodes, num_stack_frames=seq_len, action_dim=action_dim,action_transform=action_transform)
                 logger.log({"eval_score": offline_env.get_normalized_score(score)})
                 if score > best_score:
-                    torch.save({'model_state': orig_model.state_dict()}, 'models/best.pt')
+                    torch.save({'model_state': orig_model.state_dict()}, os.path.join(model_folder, 'best.pt'))
                     best_score = score
                 model.train()
             i += 1
     model.eval()
     score = batched_eval(env_name, model,eval_episodes, num_stack_frames=seq_len, action_dim=action_dim,action_transform=action_transform)
     logger.log({"eval_score": offline_env.get_normalized_score(score)})
-    torch.save({'model_state': orig_model.state_dict()}, 'models/final.pt')
+    torch.save({'model_state': orig_model.state_dict()}, os.path.join(model_folder,'final.pt'))
 
 
 
