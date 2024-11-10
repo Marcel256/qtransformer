@@ -64,7 +64,7 @@ class SequenceDataset(Dataset):
         data['observations'] = dataset['observations']
         r = dataset['rewards']
         actions = convert_action(dataset['actions'], -1, 1, action_bins)
-        terminal = dataset['timeouts']
+        terminal = np.logical_or(dataset['timeouts'], dataset['terminals'])
         ret = np.zeros_like(r)
         timesteps = np.zeros_like(r)
         ret[-1] = r[-1]

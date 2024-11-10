@@ -64,6 +64,7 @@ def train(cfg : DictConfig) -> None:
         os.mkdir(model_folder)
     print('device: ', device)
     torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
     offline_env, data = load_d4rl_env(env_name)
 
     dataset = SequenceDataset.from_d4rl(data, seq_len, action_bins, gamma)
@@ -99,7 +100,7 @@ def train(cfg : DictConfig) -> None:
     reg_loss_list = deque(maxlen=50)
     eval_episodes=10
 
-    logger = WandbLogger(os.environ['WANDB_ENTITY'], os.environ['WANDB_PROJECT'])
+    logger = WandbLogger(os.environ['WANDB_ENTITY'], os.environ['WANDB_PROJECT'], cfg)
     print(OmegaConf.to_yaml(cfg))
 
     # print(batched_eval(env_name, model,eval_episodes, num_stack_frames=seq_len, action_dim=action_dim,action_transform=action_transform))
@@ -167,7 +168,7 @@ def train(cfg : DictConfig) -> None:
 
             if (i+1) % eval_steps == 0:
                 model.eval()
-                score = batched_eval(env_name, model,eval_episodes, num_stack_frames=seq_len, action_dim=action_dim,action_transform=action_transform)
+                score = batched_eval(env_name, model, eval_episodes, num_stack_frames=seq_len, action_dim=action_dim,action_transform=action_transform)
                 logger.log({"eval_score": offline_env.get_normalized_score(score)})
                 if score > best_score:
                     torch.save({'model_state': orig_model.state_dict()}, os.path.join(model_folder, 'best.pt'))
@@ -175,7 +176,7 @@ def train(cfg : DictConfig) -> None:
                 model.train()
             i += 1
     model.eval()
-    score = batched_eval(env_name, model,eval_episodes, num_stack_frames=seq_len, action_dim=action_dim,action_transform=action_transform)
+    score = batched_eval(env_name, model, eval_episodes, num_stack_frames=seq_len, action_dim=action_dim,action_transform=action_transform)
     logger.log({"eval_score": offline_env.get_normalized_score(score)})
     torch.save({'model_state': orig_model.state_dict()}, os.path.join(model_folder,'final.pt'))
 
