@@ -25,9 +25,24 @@ class DuelingHead(nn.Module):
         return value + (adv - torch.mean(adv, dim=-1, keepdim=True))
 
 
+class ImageEncoder(nn.Module):
+
+    def __init__(self,output_dim):
+        super().__init__()
+        self.layers = nn.Sequential(nn.Conv2d(1, 32, kernel_size=8, stride=4),
+                                    nn.ReLU(),
+                                    nn.Conv2d(32, 64, kernel_size=4, stride=2),
+                                    nn.ReLU(),
+                                    nn.Conv2d(64, 64, kernel_size=3, stride=1),
+                                    nn.ReLU(),
+                                    nn.Linear(64 * 4 * 4, output_dim),)
+    def forward(self, x):
+        return self.layers(x)
+
+
 class QTransformer(nn.Module):
 
-    def __init__(self, state_dim, action_dim, hidden_dim, action_bins, seq_len, n_layers=3, n_heads=4, max_ep_len=1000, dueling=False, device=None):
+    def __init__(self, state_dim, action_dim, hidden_dim, action_bins, seq_len, n_layers=3, n_heads=4, max_ep_len=1000, dueling=False, conv_encoder=False, device=None):
         super().__init__()
 
         mask_size = action_dim + seq_len - 1
@@ -35,7 +50,10 @@ class QTransformer(nn.Module):
 
         self.action_dim = action_dim
 
-        self.state_emb = nn.Linear(state_dim, hidden_dim)
+        if conv_encoder:
+            self.state_emb = ImageEncoder(hidden_dim)
+        else:
+            self.state_emb = nn.Linear(state_dim, hidden_dim)
 
         if dueling:
             self.out = DuelingHead(hidden_dim, action_bins)

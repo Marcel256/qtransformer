@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, open_dict
 
 import numpy as np
 
@@ -55,6 +55,8 @@ def train(cfg : DictConfig) -> None:
 
     a_min = env_config['action_min']
     a_max = env_config['action_max']
+    env_type = env_config['type']
+
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     if not os.path.exists(model_folder):
@@ -62,9 +64,13 @@ def train(cfg : DictConfig) -> None:
     print('device: ', device)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
-    offline_env, data = load_d4rl_env(env_name)
-
-    dataset = SequenceDataset.from_d4rl(data, seq_len, action_bins, gamma)
+    if env_type == "atari":
+        from atari_utils import load_atari_dataset
+        data = load_atari_dataset(dataset_file)
+        dataset = SequenceDataset.from_d4rl(data, seq_len, action_bins, gamma)
+    else:
+        offline_env, data = load_d4rl_env(env_name)
+        dataset = SequenceDataset.from_d4rl(data, seq_len, action_bins, gamma)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     if discrete_actions:
@@ -88,7 +94,8 @@ def train(cfg : DictConfig) -> None:
     td_loss_list = deque(maxlen=50)
     reg_loss_list = deque(maxlen=50)
     eval_episodes=100
-    cfg['trainer'] = "BC"
+    with open_dict(cfg):
+        cfg['trainer'] = "BC"
     logger = WandbLogger(os.environ['WANDB_ENTITY'], os.environ['WANDB_PROJECT'], cfg)
     print(OmegaConf.to_yaml(cfg))
 
@@ -98,9 +105,10 @@ def train(cfg : DictConfig) -> None:
             states, actions, rewards, returns, terminal, timesteps  = batch
 
             states = states.float().to(device)
-            actions = torch.reshape(actions, (actions.shape[0], seq_len+1, -1)).int().to(device)
+            actions = torch.reshape(actions, (actions.shape[0], seq_len+1, -1)).long().to(device)
             timesteps = timesteps.int().to(device)
             logits = model(states[:, :-1], actions[:,-2], timesteps[:,:-1])
+            logits = torch.swapaxes(logits, 1, 2)
             err = loss(logits, actions[:, -2])
             optimizer.zero_grad()
             err.backward()
