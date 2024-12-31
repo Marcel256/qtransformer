@@ -4,7 +4,7 @@ from functools import partial
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LambdaLR
 
-
+#Code copied from transformers library
 def _get_cosine_schedule_with_warmup_lr_lambda(
     current_step: int, *, num_warmup_steps: int, num_training_steps: int, num_cycles: float
 ):

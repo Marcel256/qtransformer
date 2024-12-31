@@ -1,11 +1,8 @@
 import gym
-import numpy as np
 from collections import deque
 import torch
-import glob
-import random
 from cql.cql_agent import CQLAgent
-from sequence_dataset import SequenceDataset
+from qtransformer.data.sequence_dataset import SequenceDataset
 
 from torch.utils.data import DataLoader
 

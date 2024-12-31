@@ -1,10 +1,8 @@
 import torch
 import torch.nn as nn
-from transformer.transformer import Transformer
 import numpy as np
-from transformer.llama import LlamaModel
-
-import matplotlib.pyplot as plt
+from qtransformer.model.llama import LlamaModel
+from qtransformer.model.qtransformer_config import ModelConfig
 
 class DuelingHead(nn.Module):
 
@@ -34,35 +32,37 @@ class ImageEncoder(nn.Module):
                                     nn.Conv2d(32, 64, kernel_size=4, stride=2),
                                     nn.ReLU(),
                                     nn.Conv2d(64, 64, kernel_size=3, stride=1),
-                                    nn.ReLU(),
-                                    nn.Linear(64 * 4 * 4, output_dim),)
+                                    nn.ReLU())
     def forward(self, x):
         return self.layers(x)
 
 
 class QTransformer(nn.Module):
 
-    def __init__(self, state_dim, action_dim, hidden_dim, action_bins, seq_len, n_layers=3, n_heads=4, max_ep_len=1000, dueling=False, conv_encoder=False, device=None):
+    def __init__(self, state_dim, action_dim, config: ModelConfig, device=None):
         super().__init__()
 
+        self.device = device
+        seq_len = config.seq_len
+        hidden_dim = config.hidden_dim
         mask_size = action_dim + seq_len - 1
-        self.transformer = LlamaModel(hidden_dim, num_heads=n_heads, max_position=mask_size, num_layers=n_layers)#Transformer(hidden_dim, n_heads, n_layers)
+        action_bins = config.action_bins
+        self.transformer = LlamaModel(hidden_dim, num_heads=config.n_heads, max_position=mask_size, num_layers=config.n_layers)
 
         self.action_dim = action_dim
 
-        if conv_encoder:
+        if config.conv_encoder:
             self.state_emb = ImageEncoder(hidden_dim)
         else:
             self.state_emb = nn.Linear(state_dim, hidden_dim)
 
-        if dueling:
+        if config.dueling:
             self.out = DuelingHead(hidden_dim, action_bins)
         else:
             self.out = nn.Linear(hidden_dim, action_bins)
 
         self.action_emb = nn.Embedding(action_bins, hidden_dim)
-        self.time_emb = nn.Embedding(max_ep_len, hidden_dim)
-
+        self.time_emb = nn.Embedding(config.max_timestep_emb, hidden_dim)
 
         tri_mask = np.tril(np.ones((mask_size, mask_size)))
         tri_mask[:seq_len, :seq_len] = 1
@@ -74,8 +74,6 @@ class QTransformer(nn.Module):
         if device:
             self.attn_mask = self.attn_mask.to(device)
             self.pos_ids = self.pos_ids.to(device)
-
-        #self.pos_enc = nn.Parameter(torch.randn((1, mask_size, hidden_dim))*0.02, requires_grad=True)
 
         self.apply(self._init_weights)
 
@@ -102,7 +100,6 @@ class QTransformer(nn.Module):
             token = torch.cat((state_token, a_token), dim=1)
         else:
             token = state_token
-        #token =  token + self.pos_enc
         out = self.transformer(token, attention_mask=self.attn_mask, position_ids=self.pos_ids)
         action_token = out[:,-(self.action_dim):]
         q_values = self.out(action_token)
