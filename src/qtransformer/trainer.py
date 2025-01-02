@@ -1,7 +1,7 @@
 from collections import deque
 
 from qtransformer.evaluator.evaluator import Evaluator
-from qtransformer.logging.traín_logger import ConsoleLogger
+from qtransformer.train_logging.wandb_logger import WandbLogger
 from qtransformer.loss.loss import Loss
 from qtransformer.model.qtransformer import QTransformer
 from qtransformer.trainer_config import TrainerConfig
@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 from dotenv import load_dotenv
 
 import numpy as np
+import os
 
 load_dotenv()
 
@@ -30,7 +31,7 @@ class Trainer:
         self.evaluation_steps = 5000
 
         self.losses = deque(maxlen=50)
-        self.logger = ConsoleLogger()
+        self.logger = WandbLogger(os.environ['WANDB_ENTITY'], os.environ['WANDB_PROJECT'], config)
         self.loss.register_logger(self.logger)
         self.scheduler = get_cosine_schedule_with_warmup(self.optimizer, int(0.1*config.train_config.train_steps), config.train_config.train_steps)
 
@@ -59,15 +60,21 @@ class Trainer:
                 self.losses.append(err.item())
                 self.scheduler.step()
 
-                if i % self.logging_steps == 0:
-                    self.logger.log_metrics({"train_loss": np.mean(self.losses)})
-
                 if i % self.evaluation_steps == 0:
+                    self.model.eval()
                     score = self.evaluator.evaluate(self.model, self.config.env_config.id, self.config.model.seq_len)
                     self.logger.log_metrics({"eval_score": score})
+                    self.model.train()
 
-
-                self.logger.write_step()
+                if i % self.logging_steps == 0:
+                    self.logger.log_metrics({"train_loss": np.mean(self.losses)})
+                    self.logger.write_step()
                 if i >= total_steps:
                     break
                 i += 1
+        
+        self.model.eval()
+        score = self.evaluator.evaluate(self.model, self.config.env_config.id, self.config.model.seq_len)
+        self.logger.log_metrics({"eval_score": score})
+        self.logger.write_step()
+        print("Final Score: ", score)

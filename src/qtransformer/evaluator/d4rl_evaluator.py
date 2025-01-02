@@ -34,7 +34,7 @@ class D4RLEvaluator(Evaluator):
 
         for ep in range(episodes):
             env = SequenceEnvironmentWrapper(gym.make(env_id), num_stack_frames=seq_len,
-                                             action_dim=self.model.action_dim, action_transform=action_transform)
+                                             action_dim=model.action_dim, action_transform=action_transform)
             history.append(env.reset(seed=random.randint(0, 2 ** 32 - 1)))
             returns.append(0)
             dones.append(False)

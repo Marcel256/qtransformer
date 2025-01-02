@@ -1,4 +1,4 @@
-from qtransformer.logging.traín_logger import Logger
+from qtransformer.train_logging.traín_logger import Logger
 import wandb
 
 def flatten_config_dict(config, prefix=None):

@@ -1,10 +1,12 @@
 from torch import nn
 
-from qtransformer.logging.traín_logger import Logger
+from qtransformer.train_logging.traín_logger import Logger
 
 
 class Loss(nn.Module):
-    logger: Logger
+
+    def __init__(self):
+        super().__init__()
 
     def register_logger(self, logger):
         self.logger = logger

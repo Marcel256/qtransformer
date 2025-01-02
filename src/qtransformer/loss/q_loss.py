@@ -16,7 +16,7 @@ def soft_update(local_model, target_model, tau):
 
 class QLoss(Loss):
 
-    def __init__(self, model: QTransformer, config: TrainConfig):
+    def __init__(self, model: QTransformer, config: TrainConfig, R_min: float, R_max: float):
         super.__init__()
         self.model = model
         self.target_model = copy.deepcopy(self.model)
@@ -27,8 +27,8 @@ class QLoss(Loss):
         self.reg_weight = config.reg_weight
 
         self.loss = nn.MSELoss()
-        self.R_min = config.R_min
-        self.R_max = config.R_max
+        self.R_min = R_min
+        self.R_max = R_max
 
 
     def forward(self, states, actions, rewards, returns, terminals, timesteps):

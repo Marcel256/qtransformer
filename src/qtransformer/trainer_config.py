@@ -3,18 +3,18 @@ from qtransformer.model.qtransformer_config import ModelConfig
 
 @dataclass
 class EnvType:
-    D4RL = 0
-    ATARI = 1
+    D4RL = "D4RL"
+    ATARI = "atari"
 
 @dataclass
 class EnvConfig:
-    id: str
-    discrete_actions: bool
-    state_dim: int
-    action_dim: int
-    action_min: float
-    action_max: float
-    type: EnvType
+    id: str = ""
+    discrete_actions: bool = False
+    state_dim: int = 0
+    action_dim: int = 0
+    action_min: float = -1
+    action_max: float = 1
+    type: EnvType = EnvType.D4RL
 
 
 
@@ -22,29 +22,29 @@ class EnvConfig:
 
 @dataclass
 class TrainStrategy:
-    BC = 1
-    Q = 2
+    BC = "BC"
+    Q = "Q"
 
 @dataclass
 class TrainConfig:
-    lr: float
-    batch_size: int
-    reg_weight: float
-    tau: float
-    output_dir: int
-    mc_returns: bool
-    max_grad_norm: int
-    gamma: float
-    strategy: TrainStrategy
-    train_steps: int
+    lr: float = 1e-3
+    batch_size: int = 64
+    reg_weight: float = 1
+    tau: float = 1e-3
+    output_dir: int = "models"
+    mc_returns: bool = True
+    max_grad_norm: int = 1
+    gamma: float = 0.99
+    strategy: TrainStrategy = TrainStrategy.Q
+    train_steps: int = 100000
     R_min: float = 0
     R_max: float = 1
 
 
 @dataclass
 class TrainerConfig:
-    env_config: EnvConfig = field(default_factoy=EnvConfig)
-    train_config: TrainConfig = field(default_factory=TrainConfig)
-    model: ModelConfig = field(default_factory=ModelConfig)
+    env_config: EnvConfig = EnvConfig()
+    train_config: TrainConfig = TrainConfig()
+    model: ModelConfig = ModelConfig()
     dataset: str = None
     info: str = ""

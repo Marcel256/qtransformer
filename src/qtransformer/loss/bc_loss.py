@@ -8,7 +8,7 @@ from qtransformer.model.qtransformer import QTransformer
 class BCLoss(Loss):
 
     def __init__(self, model: QTransformer):
-        super.__init__()
+        super().__init__()
         self.model = model
         self.loss = nn.CrossEntropyLoss()
 

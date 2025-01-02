@@ -2,11 +2,11 @@ from dataclasses import dataclass
 
 @dataclass
 class ModelConfig:
-    n_layers: int
-    n_heads: int
-    hidden_dim: int
-    seq_len: int
-    action_bins: int
-    dueling: bool
-    max_timestep_emb: int
-    conv_encoder: bool
+    n_layers: int = 3
+    n_heads: int = 1
+    hidden_dim: int = 128
+    seq_len: int = 1
+    action_bins: int = 128
+    dueling: bool = True
+    max_timestep_emb: int = 1000
+    conv_encoder: bool = False
