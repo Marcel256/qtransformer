@@ -26,6 +26,11 @@ d4rl = [
     "mujoco-py==2.1.2"
 ]
 
+atari = [
+    "gymnasium",
+    "ale-py"
+]
+
 [tool.uv]
 conflicts = [
   [
