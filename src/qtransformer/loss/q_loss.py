@@ -17,12 +17,12 @@ def soft_update(local_model, target_model, tau):
 class QLoss(Loss):
 
     def __init__(self, model: QTransformer, config: TrainConfig, R_min: float, R_max: float):
-        super.__init__()
+        super().__init__()
         self.model = model
         self.target_model = copy.deepcopy(self.model)
         self.config = config
         self.gamma = config.gamma
-        self.mc_return = config.mc_returns
+        self.mc_returns = config.mc_returns
         self.n_step = False
         self.reg_weight = config.reg_weight
 
