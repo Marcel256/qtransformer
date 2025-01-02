@@ -25,14 +25,14 @@ class DuelingHead(nn.Module):
 
 class ImageEncoder(nn.Module):
 
-    def __init__(self,output_dim):
+    def __init__(self):
         super().__init__()
         self.layers = nn.Sequential(nn.Conv2d(1, 32, kernel_size=8, stride=4),
                                     nn.ReLU(),
                                     nn.Conv2d(32, 64, kernel_size=4, stride=2),
                                     nn.ReLU(),
                                     nn.Conv2d(64, 64, kernel_size=3, stride=1),
-                                    nn.ReLU())
+                                    nn.ReLU(), nn.Flatten())
     def forward(self, x):
         return self.layers(x)
 
@@ -50,9 +50,10 @@ class QTransformer(nn.Module):
         self.transformer = LlamaModel(hidden_dim, num_heads=config.n_heads, max_position=mask_size, num_layers=config.n_layers)
 
         self.action_dim = action_dim
-
+        self.conv_encoder = config.conv_encoder
         if config.conv_encoder:
-            self.state_emb = ImageEncoder(hidden_dim)
+            self.enc = ImageEncoder()
+            self.state_dim = nn.Linear(3136, hidden_dim)
         else:
             self.state_emb = nn.Linear(state_dim, hidden_dim)
 
@@ -94,7 +95,14 @@ class QTransformer(nn.Module):
 
     def forward(self, states, actions, timesteps):
         time = self.time_emb(timesteps)
-        state_token = self.state_emb(states) + time
+        batch_size = states.size(0)
+        seq_len = states.size(1)
+        if self.conv_encoder:
+            x = torch.reshape(states, (-1, 1, 84, 84))
+            conv_out = torch.reshape(self.enc(x), (batch_size, seq_len, -1))
+            state_token = self.state_emb(conv_out) + time
+        else:
+            state_token = self.state_emb(states) + time
         if self.action_dim > 1:
             a_token = self.action_emb(actions[:,:-1])
             token = torch.cat((state_token, a_token), dim=1)

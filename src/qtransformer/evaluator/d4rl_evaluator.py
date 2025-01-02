@@ -52,5 +52,5 @@ class D4RLEvaluator(Evaluator):
                     dones[i] = done
 
             steps += 1
-
-        return np.mean(returns)
+        env = gym.make(env_id)
+        return env.get_normalized_score(np.mean(returns))

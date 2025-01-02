@@ -26,6 +26,9 @@ import numpy as np
 def train(trainer_config: TrainerConfig) -> None:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    seed = trainer_config.seed
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
     discrete_actions = False
     evaluator: Evaluator = None
     if trainer_config.env_config.type == EnvType.D4RL:
@@ -35,7 +38,7 @@ def train(trainer_config: TrainerConfig) -> None:
         data = load_d4rl_dataset(trainer_config.env_config.id)
         discrete_actions = False
     elif trainer_config.env_config.type == EnvType.ATARI:
-        pass
+        # data['observations'] /= 255
 
     dataset = SequenceDataset.from_d4rl(data, trainer_config.model.seq_len+1, trainer_config.model.action_bins, trainer_config.train_config.gamma, discrete_actions=False)
     R_min = np.min(dataset.returns)

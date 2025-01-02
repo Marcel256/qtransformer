@@ -48,3 +48,4 @@ class TrainerConfig:
     model: ModelConfig = ModelConfig()
     dataset: str = None
     info: str = ""
+    seed: int = 0
