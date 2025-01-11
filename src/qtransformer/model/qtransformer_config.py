@@ -1,6 +1,12 @@
 from dataclasses import dataclass
 
 @dataclass
+class EncoderType:
+    DENSE = "dense",
+    PATCH = "patch",
+    CONV = "conv"
+
+@dataclass
 class ModelConfig:
     n_layers: int = 3
     n_heads: int = 1
@@ -10,3 +16,4 @@ class ModelConfig:
     dueling: bool = True
     max_timestep_emb: int = 1000
     conv_encoder: bool = False
+    encoder_type: EncoderType = EncoderType.DENSE

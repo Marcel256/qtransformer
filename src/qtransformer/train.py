@@ -22,7 +22,7 @@ import numpy as np
 
 
 
-@hydra.main(config_path=os.path.join(os.getcwd(), "conf"), config_name="cfg")
+@hydra.main(config_path="../../conf", config_name="cfg")
 def train(trainer_config: TrainerConfig) -> None:
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -43,7 +43,6 @@ def train(trainer_config: TrainerConfig) -> None:
         from qtransformer.env.atari_utils import load_atari_dataset
         evaluator = AtariEvaluator()
         data = load_atari_dataset(trainer_config.dataset)
-        data['observations'] /= 255
 
     dataset = SequenceDataset.from_d4rl(data, trainer_config.model.seq_len+1, trainer_config.model.action_bins, trainer_config.train_config.gamma, discrete_actions=discrete_actions)
     R_min = np.min(dataset.returns)

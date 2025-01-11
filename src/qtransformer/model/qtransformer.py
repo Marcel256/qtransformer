@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 from qtransformer.model.llama import LlamaModel
-from qtransformer.model.qtransformer_config import ModelConfig
+from qtransformer.model.qtransformer_config import ModelConfig, EncoderType
+
 
 class DuelingHead(nn.Module):
 
@@ -51,11 +52,17 @@ class QTransformer(nn.Module):
 
         self.action_dim = action_dim
         self.conv_encoder = config.conv_encoder
-        if config.conv_encoder:
+        if self.conv_encoder:
+            self.encoderType = EncoderType.CONV
+        else:
+            self.encoderType = config.encoder_type
+        if self.encoderType == EncoderType.CONV:
             self.enc = ImageEncoder()
             self.state_dim = nn.Linear(3136, hidden_dim)
-        else:
+        elif self.encoderType == EncoderType.DENSE:
             self.state_emb = nn.Linear(state_dim, hidden_dim)
+        elif self.encoderType == EncoderType.PATCH:
+            self.enc = nn.Conv2d(1, hidden_dim, 14, 14)
 
         if config.dueling:
             self.out = DuelingHead(hidden_dim, action_bins)
@@ -92,17 +99,33 @@ class QTransformer(nn.Module):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
 
+    def encode_obs(self, x):
+        batch_size = x.shape[0]
+        seq_length = x.shape[1]
+        # [B, T, 84, 84]
+        images = torch.reshape(x, (batch_size * seq_length, 1, x.shape[2], x.shape[3]))
+        # [B*T, 1, W, H]
+        emb = self.state_encoder(images)
+        # [B*T, D, P, P]
+        emb = torch.reshape(emb, (batch_size, seq_length, emb.shape[1], emb.shape[2] * emb.shape[3]))
+        # [B, T, D, P*P]
+
+        emb = torch.reshape(emb, (batch_size, seq_length, -1))
+        # [B, T, D*P*P]
+        return emb
 
     def forward(self, states, actions, timesteps):
         time = self.time_emb(timesteps)
         batch_size = states.size(0)
         seq_len = states.size(1)
-        if self.conv_encoder:
+        if self.encoderType == EncoderType.CONV:
             x = torch.reshape(states, (-1, 1, 84, 84))
             conv_out = torch.reshape(self.enc(x), (batch_size, seq_len, -1))
-            state_token = self.state_emb(conv_out) + time
-        else:
+            state_token = self.state_emb(conv_out)
+        elif self.encoderType == EncoderType.DENSE:
             state_token = self.state_emb(states) + time
+        elif self.encoderType == EncoderType.PATCH:
+            state_token = self.encode_obs(states)
         if self.action_dim > 1:
             a_token = self.action_emb(actions[:,:-1])
             token = torch.cat((state_token, a_token), dim=1)
